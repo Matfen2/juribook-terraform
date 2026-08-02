@@ -1,0 +1,24 @@
+# State Terraform — contient des secrets en clair (mots de passe RDB)
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+
+# Répertoire de plugins/modules téléchargés
+.terraform/
+
+# Fichiers de variables contenant des secrets
+terraform.tfvars
+*.auto.tfvars
+
+# Clés API Scaleway — ne jamais committer
+.env
+.env.*
+
+# Plans sauvegardés (peuvent contenir des secrets en clair)
+*.tfplan
+crash.log
+crash.*.log
+
+# Fichiers spécifiques à l'éditeur
+.vscode/
+.idea/
