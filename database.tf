@@ -1,10 +1,10 @@
 # ═══════════════════════════════════════════════════════════
-#  Base de données managée — Scaleway RDB (PostgreSQL)
+#  Base de données managée - Scaleway RDB (PostgreSQL)
 #
 #  Une seule instance héberge les 5 bases applicatives (authdb,
 #  lawyerdb, bookingdb, notificationdb, auditdb), même principe
 #  que le docker-compose local mais sur une instance managée
-#  mutualisée — chaque microservice garde sa base dédiée
+#  mutualisée, chaque microservice garde sa base dédiée
 #  (principe microservices respecté), seul le serveur physique
 #  est mutualisé.
 #
@@ -12,7 +12,7 @@
 #  private_network à une instance RDB Scaleway supprime son
 #  endpoint public par défaut (comportement documenté du
 #  produit, vérifié en pratique). RDB est donc injoignable
-#  depuis l'extérieur du cluster — plus sécurisé que l'inverse,
+#  depuis l'extérieur du cluster, plus sécurisé que l'inverse,
 #  mais ça veut dire que la création des extensions SQL
 #  (uuid-ossp, pgcrypto, unaccent) doit se faire depuis
 #  l'intérieur du cluster une fois déployé, pas depuis Terraform.
@@ -111,5 +111,170 @@ resource "scaleway_rdb_privilege" "auditdb" {
   instance_id   = scaleway_rdb_instance.juribook.id
   user_name     = scaleway_rdb_user.app.name
   database_name = scaleway_rdb_database.auditdb.name
+  permission    = "all"
+}
+
+# ═══════════════════════════════════════════════════════════
+#  Bases de PRODUCTION
+#
+#  Même instance RDB que le staging (isolation partielle,
+#  compromis coût assumé pour ce projet), mais bases et
+#  utilisateur applicatif SÉPARÉS du staging. Un incident ou
+#  une erreur de manipulation sur les données de staging ne
+#  peut pas toucher les données de production, et inversement
+#  — seule la ressource physique (l'instance RDB elle-même)
+#  est mutualisée.
+# ═══════════════════════════════════════════════════════════
+
+resource "scaleway_rdb_database" "authdb_prod" {
+  instance_id = scaleway_rdb_instance.juribook.id
+  name        = "authdb_prod"
+}
+
+resource "scaleway_rdb_database" "lawyerdb_prod" {
+  instance_id = scaleway_rdb_instance.juribook.id
+  name        = "lawyerdb_prod"
+}
+
+resource "scaleway_rdb_database" "bookingdb_prod" {
+  instance_id = scaleway_rdb_instance.juribook.id
+  name        = "bookingdb_prod"
+}
+
+resource "scaleway_rdb_database" "notificationdb_prod" {
+  instance_id = scaleway_rdb_instance.juribook.id
+  name        = "notificationdb_prod"
+}
+
+resource "scaleway_rdb_database" "auditdb_prod" {
+  instance_id = scaleway_rdb_instance.juribook.id
+  name        = "auditdb_prod"
+}
+
+# Utilisateur applicatif dédié à la production, distinct de
+# l'utilisateur "juribook" du staging — une fuite ou une
+# mauvaise config d'un environnement ne donne pas accès à
+# l'autre.
+resource "scaleway_rdb_user" "app_prod" {
+  instance_id = scaleway_rdb_instance.juribook.id
+  name        = "juribook_prod"
+  password    = var.db_prod_app_password
+  is_admin    = false
+}
+
+resource "scaleway_rdb_privilege" "authdb_prod" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = scaleway_rdb_user.app_prod.name
+  database_name = scaleway_rdb_database.authdb_prod.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "lawyerdb_prod" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = scaleway_rdb_user.app_prod.name
+  database_name = scaleway_rdb_database.lawyerdb_prod.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "bookingdb_prod" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = scaleway_rdb_user.app_prod.name
+  database_name = scaleway_rdb_database.bookingdb_prod.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "notificationdb_prod" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = scaleway_rdb_user.app_prod.name
+  database_name = scaleway_rdb_database.notificationdb_prod.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "auditdb_prod" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = scaleway_rdb_user.app_prod.name
+  database_name = scaleway_rdb_database.auditdb_prod.name
+  permission    = "all"
+}
+
+# ═══════════════════════════════════════════════════════════
+#  Privilège explicite pour l'admin RDB sur toutes les bases
+#
+#  Découverte en pratique : même l'utilisateur admin de
+#  l'instance (var.db_admin_username) n'a pas automatiquement
+#  le droit CONNECT sur les bases créées ensuite via l'API de
+#  gestion Scaleway ("permission denied for database ... User
+#  does not have CONNECT privilege"). Nécessaire pour que les
+#  Jobs de création d'extensions SQL (rdb-extensions-job*.yaml,
+#  dépôt juribook-kubernetes) puissent s'y connecter.
+# ═══════════════════════════════════════════════════════════
+
+resource "scaleway_rdb_privilege" "admin_authdb" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = var.db_admin_username
+  database_name = scaleway_rdb_database.authdb.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "admin_lawyerdb" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = var.db_admin_username
+  database_name = scaleway_rdb_database.lawyerdb.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "admin_bookingdb" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = var.db_admin_username
+  database_name = scaleway_rdb_database.bookingdb.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "admin_notificationdb" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = var.db_admin_username
+  database_name = scaleway_rdb_database.notificationdb.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "admin_auditdb" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = var.db_admin_username
+  database_name = scaleway_rdb_database.auditdb.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "admin_authdb_prod" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = var.db_admin_username
+  database_name = scaleway_rdb_database.authdb_prod.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "admin_lawyerdb_prod" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = var.db_admin_username
+  database_name = scaleway_rdb_database.lawyerdb_prod.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "admin_bookingdb_prod" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = var.db_admin_username
+  database_name = scaleway_rdb_database.bookingdb_prod.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "admin_notificationdb_prod" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = var.db_admin_username
+  database_name = scaleway_rdb_database.notificationdb_prod.name
+  permission    = "all"
+}
+
+resource "scaleway_rdb_privilege" "admin_auditdb_prod" {
+  instance_id   = scaleway_rdb_instance.juribook.id
+  user_name     = var.db_admin_username
+  database_name = scaleway_rdb_database.auditdb_prod.name
   permission    = "all"
 }

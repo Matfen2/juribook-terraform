@@ -1,6 +1,3 @@
-# Copier ce fichier en terraform.tfvars et adapter les valeurs.
-# NE JAMAIS committer terraform.tfvars (il est dans .gitignore).
-#
 # Les clés d'accès Scaleway (SCW_ACCESS_KEY, SCW_SECRET_KEY) ne
 # vont PAS ici : configure-les en variables d'environnement,
 # voir versions.tf pour le détail (ou un fichier .env local,
@@ -18,7 +15,7 @@ project_name = "juribook"
 # ⚠️ Vérifie la version disponible dans la console AVANT d'appliquer :
 # Containers > Kubernetes > Create Cluster > menu déroulant version.
 k8s_version       = "1.36.1"
-k8s_node_type     = "DEV1-L"   # 8 Go RAM — DEV1-M (4 Go) cause des OOMKilled en pratique
+k8s_node_type     = "DEV1-L"   # 8 Go RAM - DEV1-M (4 Go) cause des OOMKilled en pratique
 k8s_pool_size     = 1
 k8s_pool_min_size = 1
 k8s_pool_max_size = 3
@@ -34,7 +31,8 @@ db_admin_username = "juribook_admin"
 # 1 minuscule, 1 caractère spécial minimum.
 db_admin_password = "CHANGE_ME_Strong_Password1!"
 db_app_password   = "CHANGE_ME_App_Password1!"
+db_prod_app_password = "CHANGE_ME_Prod_Password1!"
 
 # ── DNS ──────────────────────────────────────────────────────
-domain_name   = ""   # ex: "juribook.fr" — laisser vide pour ignorer le DNS
+domain_name   = ""   # ex: "juribook.fr" - laisser vide pour ignorer le DNS
 ingress_lb_ip = ""   # à renseigner après le déploiement K8s (voir README)

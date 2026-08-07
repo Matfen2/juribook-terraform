@@ -1,7 +1,5 @@
 # ═══════════════════════════════════════════════════════════
 #  Variables d'entrée
-#  Copie terraform.tfvars.example en terraform.tfvars et adapte
-#  les valeurs. Ne jamais committer terraform.tfvars (secrets).
 # ═══════════════════════════════════════════════════════════
 
 variable "scw_region" {
@@ -39,12 +37,11 @@ variable "project_name" {
 }
 
 # ── Kubernetes (Kapsule) ──────────────────────────────────────
-# Le control plane Kapsule est gratuit chez Scaleway (contrairement
-# à EKS chez AWS, facturé à l'heure) — seul le coût des nœuds
+# Le control plane Kapsule est gratuit chez Scaleway, seul le coût des nœuds
 # du pool s'applique.
 
 variable "k8s_version" {
-  description = "Version de Kubernetes pour le cluster Kapsule (format complet x.y.z). ⚠️ Vérifie la liste réelle des versions disponibles dans la console AVANT d'appliquer (Containers > Kubernetes > Create Cluster > menu déroulant de version) — l'API rejette les versions non listées, et la liste évolue régulièrement. La valeur par défaut ci-dessous peut être obsolète au moment où tu lis ceci."
+  description = "Version de Kubernetes pour le cluster Kapsule (format complet x.y.z). ⚠️ Vérifie la liste réelle des versions disponibles dans la console AVANT d'appliquer (Containers > Kubernetes > Create Cluster > menu déroulant de version), l'API rejette les versions non listées, et la liste évolue régulièrement. La valeur par défaut ci-dessous peut être obsolète au moment où tu lis ceci."
   type        = string
   default     = "1.36.1"
 }
@@ -56,15 +53,15 @@ variable "k8s_node_type" {
 }
 
 variable "k8s_pool_size" {
-  description = "Nombre de nœuds au démarrage"
+  description = "Nombre de nœuds au démarrage. Passé à 2 (Sprint 8.5) : un seul DEV1-L ne suffit plus dès que staging ET production tournent simultanément (2 Kafka + 12 microservices sur le même nœud saturaient le CPU à 98%)."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "k8s_pool_min_size" {
-  description = "Nombre minimum de nœuds (autoscaling)"
+  description = "Nombre minimum de nœuds (autoscaling). Voir k8s_pool_size pour le contexte du passage à 2."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "k8s_pool_max_size" {
@@ -112,7 +109,13 @@ variable "db_admin_password" {
 }
 
 variable "db_app_password" {
-  description = "Mot de passe de l'utilisateur applicatif partagé par les microservices (équivalent du POSTGRES_PASSWORD du docker-compose local). Mêmes contraintes que db_admin_password. Doit être IDENTIQUE à POSTGRES_PASSWORD dans le secret K8s postgres-credentials du dépôt juribook-kubernetes."
+  description = "Mot de passe de l'utilisateur applicatif partagé par les microservices en staging (équivalent du POSTGRES_PASSWORD du docker-compose local). Mêmes contraintes que db_admin_password. Doit être IDENTIQUE à POSTGRES_PASSWORD dans le secret K8s postgres-credentials du namespace juribook (staging) du dépôt juribook-kubernetes."
+  type        = string
+  sensitive   = true
+}
+
+variable "db_prod_app_password" {
+  description = "Mot de passe de l'utilisateur applicatif dédié à la PRODUCTION (juribook_prod), distinct de db_app_password. Mêmes contraintes. Doit être IDENTIQUE à POSTGRES_PASSWORD dans le secret K8s postgres-credentials du namespace juribook-production du dépôt juribook-kubernetes."
   type        = string
   sensitive   = true
 }
